@@ -1,0 +1,11 @@
+.env
+.DS_Store
+.claude/
+myenv/
+__pycache__/
+*.pyc
+*.egg-info/
+/tmp/
+.preflight_cache/
+.venv/
+.pytest_cache/
