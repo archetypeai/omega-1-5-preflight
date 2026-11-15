@@ -16,7 +16,7 @@ import warnings
 # Must run before `requests` (indirectly imported below) pulls in urllib3.
 warnings.filterwarnings("ignore", module="urllib3")
 
-from checks.pilot import PilotConfig, ServingClient, run_pilot
+from checks.pilot import PilotConfig, ServingClient, choose_endpoint, is_free_trial, run_pilot
 from checks.static import FAIL, PASS, WARN, CheckResult, run_all_static_checks
 
 
@@ -69,6 +69,9 @@ def _parse_args():
     p.add_argument("--pilot-size", type=int, help="Override auto split — rows per class to use as pilot")
     p.add_argument("--force", action="store_true", help="Run pilot even below floor (underpowered)")
     p.add_argument("--env", default=".env", help="Path to .env file")
+    p.add_argument("--endpoint", default=None,
+                   help="Deployment for the pilot: prod (default), trial, or a full URL. "
+                        "Overrides ATAI_API_ENDPOINT")
     return p.parse_args()
 
 
@@ -126,14 +129,20 @@ def main() -> int:
         return 1
 
     api_key = os.environ.get("ATAI_API_KEY")
-    api_endpoint = os.environ.get("ATAI_API_ENDPOINT")
-    if not api_key or not api_endpoint:
-        print(f"{COLOR[FAIL]}[FAIL]{COLOR['reset']} ATAI_API_KEY / ATAI_API_ENDPOINT not set (check {args.env}).")
+    if not api_key:
+        print(f"{COLOR[FAIL]}[FAIL]{COLOR['reset']} ATAI_API_KEY not set (check {args.env}).")
+        return 1
+    api_endpoint = choose_endpoint(args.endpoint, os.environ.get("ATAI_API_ENDPOINT"))
+    if is_free_trial(api_endpoint):
+        print(f"{COLOR[FAIL]}[FAIL]{COLOR['reset']} The free trial ({api_endpoint}) doesn't serve "
+              "omega-embedding, so the pilot can't run there. Use a production key and endpoint; "
+              "the static checks above need no API.")
         return 1
 
     print()
     print("[B] Pilot run")
     print("-" * 80)
+    print(f"  endpoint: {api_endpoint}")
 
     client = ServingClient(api_key, api_endpoint)
     cfg = PilotConfig(

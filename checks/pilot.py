@@ -112,6 +112,23 @@ def plan_split(n_rows: int, force: bool = False, size_override: Optional[int] = 
 # ---------------------------------------------------------------------------
 # Inference API client
 # ---------------------------------------------------------------------------
+PROD_ENDPOINT = "https://platform.u1.archetypeai.app/api"
+TRIAL_ENDPOINT = "https://try.archetypeai.app/api"
+NAMED_ENDPOINTS = {"prod": PROD_ENDPOINT, "trial": TRIAL_ENDPOINT}
+
+
+def choose_endpoint(flag: Optional[str], env_value: Optional[str]) -> str:
+    """Pick the deployment: `--endpoint` (a name or a URL) wins, then ATAI_API_ENDPOINT,
+    then production. Returns the resolved '<root>/api' URL."""
+    raw = flag or env_value or "prod"
+    return resolve_endpoint(NAMED_ENDPOINTS.get(raw.strip().lower(), raw))
+
+
+def is_free_trial(endpoint: str) -> bool:
+    """The free trial doesn't serve omega-embedding, so the pilot can't run there."""
+    return "//try.archetypeai.app" in endpoint
+
+
 def resolve_endpoint(raw: str) -> str:
     """Accept a bare root, a /vX.Y suffix, or /api itself; return '<root>/api'."""
     base = re.sub(r"/api(/lens)?$", "", (raw or "").rstrip("/"))

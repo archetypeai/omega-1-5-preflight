@@ -31,7 +31,8 @@ import pandas as pd
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-from checks.pilot import ServingClient, fit_scaler, knn_predict, read_matrix, windows  # noqa: E402
+from checks.pilot import (ServingClient, choose_endpoint, fit_scaler, is_free_trial,  # noqa: E402
+                          knn_predict, read_matrix, windows)
 from checks.static import summarize_shot_file  # noqa: E402
 
 FAULT_ONSET = 160      # Testing split: fault introduced at sample 160
@@ -76,6 +77,7 @@ def main():
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--env", default=os.path.join(REPO, ".env"))
+    ap.add_argument("--endpoint", default=None, help="prod (default), trial, or a full URL; overrides ATAI_API_ENDPOINT")
     a = ap.parse_args()
     load_env(a.env)
     rng = random.Random(a.seed)
@@ -95,7 +97,11 @@ def main():
             + load_windows(os.path.join(a.tep_dir, "TEP_Faulty_Testing.csv"), fault_picks, cols, w, mean, std))
     print(f"window={w} step={step}: {len(lib_w)} library windows, {len(test)} test windows")
 
-    client = ServingClient(os.environ["ATAI_API_KEY"], os.environ["ATAI_API_ENDPOINT"])
+    endpoint = choose_endpoint(a.endpoint, os.environ.get("ATAI_API_ENDPOINT"))
+    if is_free_trial(endpoint):
+        sys.exit(f"The free trial ({endpoint}) doesn't serve omega-embedding; use a production endpoint.")
+    print(f"endpoint: {endpoint}")
+    client = ServingClient(os.environ["ATAI_API_KEY"], endpoint)
     client.open_session(w)
     try:
         with ThreadPoolExecutor(a.workers) as ex:

@@ -26,7 +26,9 @@ python3 -m venv .venv
 
 The `.env` file wins over variables already exported in your shell, so an `ATAI_*` in a shell profile can't point the pilot at another deployment.
 
-The pilot needs a production API key: the free trial (`try.archetypeai.app`) doesn't serve `omega-embedding`. The static checks need no key.
+The pilot runs on production (`https://platform.u1.archetypeai.app/api`) unless you choose otherwise. The endpoint comes from, in order: `--endpoint` (`prod`, `trial`, or any deployment's full URL), then `ATAI_API_ENDPOINT` in `.env`, then production.
+
+The pilot needs a production API key: the free trial (`try.archetypeai.app`) doesn't serve `omega-embedding`, so `--endpoint trial` stops before the pilot with a message saying so. The static checks need no key.
 
 ## Example data
 
@@ -77,6 +79,7 @@ Both are 53-column CSVs (timestamp + 52 process variables). See [Data attributio
 | `--pilot-size N`      | auto | Override the auto split — rows per class for the pilot |
 | `--force`             | off | Run the pilot even below the floor (underpowered) |
 | `--env PATH`          | `.env` | Env file path |
+| `--endpoint E`        | `prod` | Deployment for the pilot: `prod`, `trial`, or a full URL. Overrides `ATAI_API_ENDPOINT` |
 
 ## How the pilot works
 

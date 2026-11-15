@@ -113,3 +113,19 @@ def test_embed_group_gives_up_after_retries(monkeypatch):
     monkeypatch.setattr(c, "_post", always_down)
     with pytest.raises(RuntimeError, match="after 4 tries"):
         c._embed_group([[0.0] * 16])
+
+
+def test_choose_endpoint_defaults_to_production():
+    from checks.pilot import PROD_ENDPOINT, choose_endpoint
+    assert choose_endpoint(None, None) == PROD_ENDPOINT
+    assert choose_endpoint(None, "") == PROD_ENDPOINT          # an empty ATAI_API_ENDPOINT= line
+    assert choose_endpoint("prod", None) == PROD_ENDPOINT
+
+
+def test_choose_endpoint_precedence_and_names():
+    from checks.pilot import TRIAL_ENDPOINT, choose_endpoint, is_free_trial
+    assert choose_endpoint(None, "https://other.example") == "https://other.example/api"   # .env
+    assert choose_endpoint("https://flag.example/api", "https://other.example") == "https://flag.example/api"
+    assert choose_endpoint("TRIAL", "https://other.example") == TRIAL_ENDPOINT              # flag wins, any case
+    assert is_free_trial(choose_endpoint("trial", None))
+    assert not is_free_trial(choose_endpoint(None, None))
